@@ -26,6 +26,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.getSystemService
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import com.example.demolocation.adapter.SearchSuggestionAdapter
 import com.example.demolocation.databinding.FragmentPlaceBinding
 import com.example.demolocation.viewmodel.MainViewModel
 import com.google.android.gms.location.*
@@ -53,9 +54,10 @@ import java.util.*
 import java.util.concurrent.TimeUnit
 
 
-class PlaceFragment: Fragment(), OnMapReadyCallback {
+class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDemoClick {
     private lateinit var binding: FragmentPlaceBinding
     private lateinit var viewModel: MainViewModel
+    private var demoAdapter: SearchSuggestionAdapter? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -90,9 +92,11 @@ class PlaceFragment: Fragment(), OnMapReadyCallback {
         viewModel.initClient()
         placesClient.findAutocompletePredictions(viewModel.request).addOnSuccessListener {
             var text = StringBuilder()
-            for (pre in it.autocompletePredictions )
-                text.append(" ").append(pre.getFullText(null))
+            for (prediction in it.autocompletePredictions ){
+                text.append(" ").append(prediction.getFullText(null))
             Log.v("ddtv","PF success: "+it.toString())
+                viewModel.autoCompletePredication.add(prediction)
+            }
         }.addOnFailureListener {
             Log.v("ddtv","PF error: "+it.toString())
         }
@@ -122,8 +126,9 @@ class PlaceFragment: Fragment(), OnMapReadyCallback {
                 if (location != null || location == "") {
                     val geocoder = Geocoder(requireActivity())
                     try {
-                        addressList = geocoder.getFromLocationName(location, 1)
+                        addressList = geocoder.getFromLocationName(location, 3)
                         Log.v("ddtv","on onQueryTextSubmit 22: "+addressList.toString())
+                        Log.v("ddtv","on onQueryTextSubmit 22: "+addressList?.size.toString())
                     } catch (e: IOException) {
                         e.printStackTrace()
                     }
@@ -136,6 +141,13 @@ class PlaceFragment: Fragment(), OnMapReadyCallback {
                             viewModel.googleMap?.addMarker(MarkerOptions().position(latLng).title(location))
                             viewModel.googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 10f))
                         }
+                    }
+                    if (demoAdapter != null) {
+                        demoAdapter!!.notifyDataSetChanged()
+                    } else {
+                        demoAdapter =
+                            SearchSuggestionAdapter(viewModel.autoCompletePredication, this@PlaceFragment)
+                        //binding.rvDemo.adapter = demoAdapter
                     }
                 }
                 return false
@@ -276,5 +288,9 @@ class PlaceFragment: Fragment(), OnMapReadyCallback {
                 getLastLocation()
             }
         }
+    }
+
+    override fun getSelectedItem(position: Int, title: String) {
+        TODO("Not yet implemented")
     }
 }

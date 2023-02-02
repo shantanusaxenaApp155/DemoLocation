@@ -15,6 +15,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.Marker
 import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.libraries.places.api.Places
+import com.google.android.libraries.places.api.model.AutocompletePrediction
 import com.google.android.libraries.places.api.model.AutocompleteSessionToken
 import com.google.android.libraries.places.api.model.RectangularBounds
 import com.google.android.libraries.places.api.model.TypeFilter
@@ -37,8 +38,9 @@ class MainViewModel : ViewModel() {
     var mLongitude: Double=0.0
     lateinit var request:  FindAutocompletePredictionsRequest
     lateinit var geocoder:Geocoder
+    val autoCompletePredication = ArrayList<AutocompletePrediction?>()
     val addressList = MutableSharedFlow<List<Address>>(1)
-
+    val autoCompletePredicationFlow = MutableSharedFlow<List<AutocompletePrediction>>(1)
 
     init {
         initClient()
