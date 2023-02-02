@@ -49,19 +49,13 @@ import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRe
 import com.google.android.libraries.places.api.net.FindAutocompletePredictionsResponse
 import java.io.IOException
 import java.lang.StringBuilder
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 
 class PlaceFragment: Fragment(), OnMapReadyCallback {
     private lateinit var binding: FragmentPlaceBinding
-    private var markerOptions: MarkerOptions? = null
-    private var googleMap: GoogleMap? = null
-    lateinit var mFusedLocationClient: FusedLocationProviderClient
     private lateinit var viewModel: MainViewModel
-    val PERMISSION_ID = 200
-    private var currentLocation: Location? = null
-    private var mCurrLocationMarker: Marker?= null
-
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -78,22 +72,21 @@ class PlaceFragment: Fragment(), OnMapReadyCallback {
         viewModel = ViewModelProvider(requireActivity()).get(MainViewModel::class.java)
         //initPlaceApi()
         setUpView()
+        viewModel.geocoder = Geocoder(requireActivity(), Locale.getDefault())
 
         val apikey = getString(R.string.api_key)
         viewModel.apiKey = apikey
 
         Places.initialize(requireActivity().applicationContext, apikey)
         initPlaceApi()
-        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
+        viewModel.mFusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
         getLastLocation()
     }
 
 
     private fun initPlaceApi(){
-        //val apikey = getString(R.string.api_key)
-        //val token = AutocompleteSessionToken.newInstance()
         Places.initialize(requireActivity().applicationContext, viewModel.apiKey)
-        val placesClient = Places.createClient(this.requireActivity())
+        val placesClient = Places.createClient(requireActivity())
         viewModel.initClient()
         placesClient.findAutocompletePredictions(viewModel.request).addOnSuccessListener {
             var text = StringBuilder()
@@ -103,25 +96,6 @@ class PlaceFragment: Fragment(), OnMapReadyCallback {
         }.addOnFailureListener {
             Log.v("ddtv","PF error: "+it.toString())
         }
-
-       /* val rectangularBounds = RectangularBounds.newInstance(LatLng(-33.880490, 151.184363),
-            LatLng(-33.858754, 151.229596))
-        val request = FindAutocompletePredictionsRequest.builder()
-            .setLocationBias(rectangularBounds)
-            .setCountry("in")
-            .setTypeFilter(TypeFilter.ADDRESS)
-            .setSessionToken(token)
-            .setQuery("ind")
-            .build();
-
-        placesClient.findAutocompletePredictions(request).addOnSuccessListener {
-            var text = StringBuilder()
-            for (pre in it.autocompletePredictions )
-            text.append(" ").append(pre.getFullText(null))
-            Log.v("ddtv","PF success: "+it.toString())
-        }.addOnFailureListener {
-            Log.v("ddtv","PF error: "+it.toString())
-        }*/
     }
 
     override fun onResume() {
@@ -158,9 +132,9 @@ class PlaceFragment: Fragment(), OnMapReadyCallback {
                     val address: Address = addressList!![0]
                     val latLng = LatLng(address.getLatitude(), address.getLongitude())
 
-                        if (googleMap!=null){
-                            googleMap?.addMarker(MarkerOptions().position(latLng).title(location))
-                            googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 10f))
+                        if (viewModel.googleMap!=null){
+                            viewModel.googleMap?.addMarker(MarkerOptions().position(latLng).title(location))
+                            viewModel.googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 10f))
                         }
                     }
                 }
@@ -172,14 +146,16 @@ class PlaceFragment: Fragment(), OnMapReadyCallback {
     @SuppressLint("PotentialBehaviorOverride")
     @RequiresApi(api = Build.VERSION_CODES.M)
     override fun onMapReady(mMap: GoogleMap) {
-        googleMap = mMap
-        googleMap!!.setOnMapClickListener {
-            markerOptions= MarkerOptions()
-            markerOptions?.position(it)
-            markerOptions?.title(it.latitude.toString())
-            googleMap!!.clear()
-            googleMap!!.animateCamera(CameraUpdateFactory.newLatLngZoom(it, 10f))
-            googleMap!!.addMarker(markerOptions!!)
+        viewModel.googleMap = mMap
+        viewModel.googleMap!!.setOnMapClickListener {
+            viewModel.markerOptions= MarkerOptions()
+            viewModel.markerOptions?.position(it)
+            viewModel.markerOptions?.title(it.latitude.toString())
+            viewModel.googleMap!!.clear()
+            viewModel.googleMap!!.animateCamera(CameraUpdateFactory.newLatLngZoom(it, 10f))
+            viewModel.googleMap!!.addMarker(viewModel.markerOptions!!)
+            viewModel.query = it.latitude.toString()+" , "+it.longitude.toString()
+            viewModel.latlng=it
         }
         if (ActivityCompat.checkSelfPermission(
                 requireActivity(),
@@ -191,46 +167,44 @@ class PlaceFragment: Fragment(), OnMapReadyCallback {
         ) {
             return
         }
-        googleMap!!.isMyLocationEnabled = true
-        googleMap!!.uiSettings.isMyLocationButtonEnabled = false
-        //setMarkerOnCurrentLocation()
-      /*]]  mMap.setOnMarkerClickListener { marker ->
-           *//* anchorBehavior!!.state = (AnchorSheetBehavior.STATE_ANCHOR)
-            mBusinessList!!.clear()
-            mBusinessList!!.add(businessHashMap!![marker])
-            mPlacesBusinessAdapter!!.notifyDataSetChanged()
-            false*//*
+        viewModel.googleMap!!.isMyLocationEnabled = true
+        viewModel.googleMap!!.uiSettings.isMyLocationButtonEnabled = false
+
+        if (viewModel.latlng!=null){
+            viewModel.mLatitude = viewModel.latlng!!.latitude
+            viewModel.mLongitude = viewModel.latlng!!.longitude
+        var address= viewModel.getAddress(viewModel.latlng!!,viewModel.geocoder)
+        binding.tvConfirmLocation.text = address
         }
-        mMap.setOnMapClickListener {
-            mBusinessList!!.clear()
-            mBusinessList!!.addAll((mPermanentBusinessList)!!)
-            mPlacesBusinessAdapter!!.notifyDataSetChanged()
-        }*/
     }
 
     @SuppressLint("MissingPermission")
     private fun getLastLocation() {
         if (checkPermissions()) {
             if (isLocationEnabled()) {
-                mFusedLocationClient.lastLocation.addOnCompleteListener(requireActivity()) { task ->
+                viewModel.mFusedLocationClient.lastLocation.addOnCompleteListener(requireActivity()) { task ->
                     var location: Location? = task.result
                     if (location == null) {
                         requestNewLocationData()
                     } else {
                         Log.v("ddtv","on Success CompList: "+location.latitude.toString()+" , "+location.longitude.toString())
-                        if (mCurrLocationMarker!=null){
-                            mCurrLocationMarker!!.remove()
+                        if (viewModel.mCurrLocationMarker!=null){
+                            viewModel.mCurrLocationMarker!!.remove()
                         }
 
                         var latLong = LatLng(location.latitude,location.longitude)
-                        markerOptions = MarkerOptions()
-                        markerOptions?.position(latLong)
-                        markerOptions?.title("Currrent Location: "+latLong)
-                        markerOptions?.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
-                        mCurrLocationMarker = googleMap?.addMarker(markerOptions!!);
+                        viewModel.markerOptions = MarkerOptions()
+                        viewModel.markerOptions?.position(latLong)
+                        viewModel.markerOptions?.title("Currrent Location: "+latLong)
+                        viewModel.markerOptions?.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN))
+                        viewModel.mCurrLocationMarker = viewModel.googleMap?.addMarker(viewModel.markerOptions!!)
 
-                        googleMap?.moveCamera(CameraUpdateFactory.newLatLng(latLong));
-                        googleMap?.animateCamera(CameraUpdateFactory.zoomTo(11F));
+                        viewModel.googleMap?.moveCamera(CameraUpdateFactory.newLatLng(latLong))
+                        viewModel.googleMap?.animateCamera(CameraUpdateFactory.zoomTo(11F))
+                        viewModel.mLatitude = latLong.latitude
+                        viewModel.mLongitude = latLong.longitude
+                        var address= viewModel.getAddress(latLong,viewModel.geocoder)
+                        binding.tvConfirmLocation.text = address
                     }
                 }
             } else {
@@ -251,8 +225,8 @@ class PlaceFragment: Fragment(), OnMapReadyCallback {
         mLocationRequest.fastestInterval = 0
         mLocationRequest.numUpdates = 1
 
-        mFusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
-        mFusedLocationClient!!.requestLocationUpdates(
+        viewModel.mFusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
+        viewModel.mFusedLocationClient!!.requestLocationUpdates(
             mLocationRequest, mLocationCallback,
             Looper.myLooper()
         )
@@ -291,13 +265,13 @@ class PlaceFragment: Fragment(), OnMapReadyCallback {
         ActivityCompat.requestPermissions(
             requireActivity(),
             arrayOf(android.Manifest.permission.ACCESS_COARSE_LOCATION,android.Manifest.permission.ACCESS_FINE_LOCATION),
-            PERMISSION_ID
+            viewModel.PERMISSION_ID
         )
     }
 
 
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
-        if (requestCode == PERMISSION_ID) {
+        if (requestCode == viewModel.PERMISSION_ID) {
             if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
                 getLastLocation()
             }

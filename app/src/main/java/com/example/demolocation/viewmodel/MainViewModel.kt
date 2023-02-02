@@ -1,5 +1,7 @@
 package com.example.demolocation.viewmodel
 
+import android.location.Address
+import android.location.Geocoder
 import android.location.Location
 import android.provider.Settings.Global.getString
 import android.util.Log
@@ -17,8 +19,7 @@ import com.google.android.libraries.places.api.model.AutocompleteSessionToken
 import com.google.android.libraries.places.api.model.RectangularBounds
 import com.google.android.libraries.places.api.model.TypeFilter
 import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest
-import kotlinx.coroutines.launch
-import java.lang.StringBuilder
+import kotlinx.coroutines.flow.MutableSharedFlow
 
 class MainViewModel : ViewModel() {
     lateinit var binding: FragmentPlaceBinding
@@ -31,7 +32,13 @@ class MainViewModel : ViewModel() {
     var mCurrLocationMarker: Marker?= null
     lateinit var apiKey: String
     var query: String=""
+    var latlng: LatLng?=null
+    var mLatitude: Double=0.0
+    var mLongitude: Double=0.0
     lateinit var request:  FindAutocompletePredictionsRequest
+    lateinit var geocoder:Geocoder
+    val addressList = MutableSharedFlow<List<Address>>(1)
+
 
     init {
         initClient()
@@ -40,8 +47,7 @@ class MainViewModel : ViewModel() {
     fun initClient(){
         val token = AutocompleteSessionToken.newInstance()
         val rectangularBounds = RectangularBounds.newInstance(
-            LatLng(-33.880490, 151.184363),
-            LatLng(-33.858754, 151.229596)
+            LatLng(mLatitude, mLongitude), LatLng(mLatitude, mLongitude)
         )
 
         request = FindAutocompletePredictionsRequest.builder()
@@ -53,20 +59,28 @@ class MainViewModel : ViewModel() {
             .build();
     }
 
-    fun getNewComment(id: Int) {
-       /* viewModelScope.launch {
-            repository.getComment(id)
-                .catch {
-                    commentState.value =
-                        CommentApiState.error(it.message.toString())
-                }
-                .collect {
-                    commentState.value = CommentApiState.success(it.data)
-                }
-        }*/
-    }
 
-    fun initNew(){
+    fun getAddress(latLng: LatLng,geocoder: Geocoder): String {
+        val addresses: List<Address>?
+        val address: Address?
+        var fulladdress = ""
+        var fulAddress= StringBuffer()
+        addresses = geocoder.getFromLocation(latLng.latitude, latLng.longitude, 1)
 
+        if (addresses!!.isNotEmpty()) {
+            address = addresses[0]
+            fulladdress = address.getAddressLine(0)
+            var city = address.getLocality()
+            var state = address.getAdminArea()
+            var country = address.getCountryName()
+            var postalCode = address.getPostalCode()
+            var knownName = address.getFeatureName()
+            return fulAddress.append(fulAddress).append(" ").append(city).append(" ").append(state).append(" ")
+                .append(country).append("\n").append(" ").append(postalCode).toString()
+        } else{
+             fulladdress = "Location not found"
+            return fulAddress.append("Location not found").toString()
+        }
+        return latLng.toString()
     }
 }
