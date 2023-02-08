@@ -28,19 +28,33 @@
                 android:id="@+id/mapView"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                map:zOrderOnTop="true"
+                android:visibility="visible"
                 map:useViewLifecycle="true"
-                map:uiCompass="true"
                 map:uiRotateGestures="true"
                 map:uiScrollGestures="true"
                 map:uiTiltGestures="true"
                 map:uiZoomGestures="true"
                 map:uiZoomControls="true"
+                map:cameraMinZoomPreference="0.0"
+                map:cameraMaxZoomPreference="1.0"
+                map:uiCompass="true"
                 map:liteMode="true"
+                map:zOrderOnTop="true"
+                map:uiMapToolbar="true"
+                map:ambientEnabled="true" />
+            <!--map:liteMode="true"
+            map:zOrderOnTop="true"
+            map:useViewLifecycle="true"
+            map:uiRotateGestures="true"
+                map:uiScrollGestures="true"
+                map:uiTiltGestures="true"
+                map:uiZoomGestures="true"
+                map:uiZoomControls="true"
                 map:uiMapToolbar="true"
                 map:ambientEnabled="true"
                 map:cameraMinZoomPreference="0.0"
-                map:cameraMaxZoomPreference="1.0"/>
+                map:cameraMaxZoomPreference="1.0"
+            map:uiCompass="true"-->
         </androidx.cardview.widget.CardView>
 
         <FrameLayout

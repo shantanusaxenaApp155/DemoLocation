@@ -54,7 +54,7 @@ class MainViewModel : ViewModel() {
 
         request = FindAutocompletePredictionsRequest.builder()
             .setLocationBias(rectangularBounds)
-            .setCountry("in")
+            .setCountry("IN")
             .setTypeFilter(TypeFilter.ADDRESS)
             .setSessionToken(token)
             .setQuery(query)
