@@ -22,6 +22,7 @@ import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -97,7 +98,7 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
         initPlaceApi()
         viewModel.mFusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
         viewModel.googleMap?.setOnPoiClickListener {
-            startCMS(LatLng(37.4219983,-122.084),it)
+            startPointOfInterest(LatLng(37.4219983,-122.084),it)
         }
         //getLastLocation()
     }
@@ -121,8 +122,8 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
         placesClient.findAutocompletePredictions(request)
             .addOnSuccessListener { response: FindAutocompletePredictionsResponse ->
                 for (prediction in response.autocompletePredictions) {
-                    Log.i("ddtv", "autoResult: "+prediction.placeId+" , "+response.toString()+" ,,  "+prediction.placeTypes.toString())
-                    Log.i("ddtv", "autoResult 22: "+prediction.getPrimaryText(null).toString()+" , "+prediction.getFullText(null).toString())
+                    //Log.i("ddtv", "autoResult: "+prediction.placeId+" , "+response.toString()+" ,,  "+prediction.placeTypes.toString())
+                    //Log.i("ddtv", "autoResult 22: "+prediction.getPrimaryText(null).toString()+" , "+prediction.getFullText(null).toString())
                     viewModel.autoCompletePredication.add(prediction)
                 }
                 if (demoAdapter != null) {
@@ -142,7 +143,8 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
 
     }
 
-    private fun startCMS(d: LatLng,pointOfInterest: PointOfInterest){
+    private fun startPointOfInterest(d: LatLng,pointOfInterest: PointOfInterest){
+        Log.v("ddtv","startCMS: if case ")
         Places.initialize(requireActivity().applicationContext, viewModel.apiKey)
         val placesClient = Places.createClient(requireActivity())
         //viewModel.initClient()
@@ -176,7 +178,6 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
     private fun initPlaceApi(){
         Places.initialize(requireActivity().applicationContext, viewModel.apiKey)
         placesClient = Places.createClient(requireActivity())
-        //viewModel.initClient()
 
         token = AutocompleteSessionToken.newInstance()
         bounds = RectangularBounds.newInstance(
@@ -190,40 +191,7 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
                 text.append(" ").append(prediction.getFullText(null))
                 viewModel.autoCompletePredication.add(prediction)
             }
-        }.addOnFailureListener {
-
-        }*/
-
-        //heret
-       /* val pointOfInterest= PointOfInterest(viewModel.latlng!!,"","")
-        val placeId = pointOfInterest.placeId
-        val placeFields = listOf(
-            Place.Field.ID,
-            Place.Field.NAME,
-            Place.Field.PHONE_NUMBER,
-            Place.Field.PHOTO_METADATAS,
-            Place.Field.ADDRESS,
-            Place.Field.LAT_LNG)
-
-        val request = FetchPlaceRequest
-            .builder(placeId, placeFields)
-            .build()
-
-        placesClient.fetchPlace(request)
-            .addOnSuccessListener { response ->
-                val place = response.place
-
-            }.addOnFailureListener { exception ->
-                if (exception is ApiException) {
-                    val statusCode = exception.statusCode
-
-                }
-            }
-
-        viewModel.googleMap?.setOnPoiClickListener {
-
-        }*/
-        //here
+        }.addOnFailureListener { }*/
     }
 
 
@@ -241,24 +209,15 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
 
         binding.clBottomConfirmLocation.visibility= View.VISIBLE
 
-        binding.searchBoxContainer.searchEditText.doOnTextChanged { text, start, before, count ->
-            val query = text.toString().toLowerCase(Locale.getDefault())
-           // filterWithQuery(query)
-            //toggleImageView(query)
-        }
-
         binding.searchBoxContainer.clearSearchQuery.setOnClickListener {
             binding.searchBoxContainer.searchEditText.setText(" ")
-        }
-
-        binding.searchBoxContainer.searchEditText.addTextChangedListener {
-
+            binding.searchBoxContainer.clearSearchQuery.visibility=View.GONE
         }
 
         binding.searchBoxContainer.searchEditText.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(p0: Editable?) {
-                Log.v("ddtv","inPF afterTextChanged: "+p0.toString())
-                shoePredictionList(p0.toString())
+                showPredictionList(p0.toString())
+                binding.searchBoxContainer.clearSearchQuery.visibility=View.VISIBLE
             }
 
             override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
@@ -274,132 +233,65 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
             binding.clBottomConfirmLocation.visibility= View.GONE
         }
 
-        /*binding.idSearchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener{
-            override fun onQueryTextChange(newText: String?): Boolean {
-                return false
+
+        //for Geocoder
+        /*
+         val location = binding.idSearchView.getQuery().toString()
+        var addressList: List<Address>? = null
+
+        val geocoder = Geocoder(requireActivity())
+        try {
+            addressList = geocoder.getFromLocationName(location, 3)
+            Log.v("ddtv","on onQueryTextSubmit 22: "+addressList.toString())
+            Log.v("ddtv","on onQueryTextSubmit 22: "+addressList?.size.toString())
+        } catch (e: IOException) {
+            Log.v("ddtv","in onQueryTxtSub: "+e.toString()+" , "+e.message.toString())
+            e.printStackTrace()
+        }
+
+        if (addressList!=null){
+            val address: Address = addressList!![0]
+            val latLng = LatLng(address.getLatitude(), address.getLongitude())
+            Log.v("ddtv","in onQueryTxtSub addreesList: "+latLng)
+
+            if (viewModel.googleMap!=null){
+                Log.v("ddtv","in onQueryTxtSub addreesList 22 case: "+latLng.latitude+" , "+latLng.longitude)
+                viewModel.googleMap?.addMarker(MarkerOptions().position(latLng).title(location))
+                viewModel.googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 10f))
             }
-
-            override fun onQueryTextSubmit(query: String?): Boolean {
-                Log.v("ddtv","on onQueryTextSubmit: "+query.toString())
-                val location = binding.idSearchView.getQuery().toString()
-                var addressList: List<Address>? = null
-
-                //here
-                getSearchPlaces(location)
-                //here
-
-                *//*if (location != null || location == "") {
-                    val geocoder = Geocoder(requireActivity())
-                    try {
-                        addressList = geocoder.getFromLocationName(location, 3)
-                        Log.v("ddtv","on onQueryTextSubmit 22: "+addressList.toString())
-                        Log.v("ddtv","on onQueryTextSubmit 22: "+addressList?.size.toString())
-                    } catch (e: IOException) {
-                        Log.v("ddtv","in onQueryTxtSub: "+e.toString()+" , "+e.message.toString())
-                        e.printStackTrace()
-                    }
-                    
-                    if (addressList!=null){
-                    val address: Address = addressList!![0]
-                    val latLng = LatLng(address.getLatitude(), address.getLongitude())
-                        Log.v("ddtv","in onQueryTxtSub addreesList: "+latLng)
-
-                        if (viewModel.googleMap!=null){
-                            Log.v("ddtv","in onQueryTxtSub addreesList 22 case: "+latLng.latitude+" , "+latLng.longitude)
-                            viewModel.googleMap?.addMarker(MarkerOptions().position(latLng).title(location))
-                            viewModel.googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 10f))
-                        }
-                    }
-                    if (demoAdapter != null) {
-                        demoAdapter!!.notifyDataSetChanged()
-                    } else {
-                        demoAdapter =
-                            SearchSuggestionAdapter(viewModel.autoCompletePredication, this@PlaceFragment)
-                        //binding.rvDemo.adapter = demoAdapter
-                    }
-                }*//*
-
-                return true
-            }
-        })*/
-    }
-
-    private fun shoePredictionList(query: String){
-        getSearchPlaces(query)
-    }
-
-
-    //here
-    private fun attachAdapter(list: ArrayList<AutocompletePrediction?>) {
-        demoAdapter =
-            SearchSuggestionAdapter(viewModel.autoCompletePredication, this@PlaceFragment)
-        binding.searchList.adapter = demoAdapter
-
-       /* val searchAdapter = SearchAdapter(list)
-        recyclerView.adapter = searchAdapter*/
-        /*if (demoAdapter != null) {
-            demoAdapter!!.notifyDataSetChanged()
-        } else {
-            demoAdapter =
-                SearchSuggestionAdapter(viewModel.autoCompletePredication, this@PlaceFragment)
-            //binding.rvDemo.adapter = demoAdapter
         }*/
     }
 
-    private fun filterWithQuery(query: String) {
-        if (query.isNotEmpty()) {
-            attachAdapter(viewModel.autoCompletePredication)
-            toggleRecyclerView(viewModel.autoCompletePredication)
-        } else if (query.isEmpty()) {
-            attachAdapter(viewModel.autoCompletePredication)
+    private fun getLatLngFromAddress(address:String): LatLng {
+        val location = address
+        var addressList: List<Address>? = null
+        val geocoder = Geocoder(requireActivity())
+        try {
+            addressList = geocoder.getFromLocationName(location, 1)
+        } catch (e: IOException) {
+            e.printStackTrace()
         }
-    }
-
-   /* private fun onQueryChanged(filterQuery: String): List<AutocompletePrediction> {
-       *//* val filteredList = ArrayList<AutocompletePrediction>()
-        for (currentSport in sportsList) {
-            if (currentSport.title.toLowerCase(Locale.getDefault()).contains(filterQuery)) {
-                filteredList.add(currentSport)
+        if (addressList!=null){
+            val address: Address = addressList!![0]
+            val latLng = LatLng(address.getLatitude(), address.getLongitude())
+            if (viewModel.googleMap!=null){
+                viewModel.googleMap?.addMarker(MarkerOptions().position(latLng).title(location))
+                viewModel.googleMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(latLng, 10f))
             }
+            return latLng
         }
-        return filteredList*//*
-    }*/
 
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        if (requestCode == 101 && resultCode == Activity.RESULT_OK) {
-            val spokenText: String? =
-                data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS).let { results ->
-                    results?.get(0)
-                }
-            binding.searchBoxContainer.searchEditText.setText(spokenText)
-        }
-        super.onActivityResult(requestCode, resultCode, data)
+        return viewModel.latlng!!
     }
 
-    private fun toggleRecyclerView(sportsList: List<AutocompletePrediction?>) {
-        if (sportsList.isEmpty()) {
-            binding.searchList.visibility = View.INVISIBLE
-            binding.noSearchResultsFoundText.visibility = View.VISIBLE
-        } else {
-            binding.searchList.visibility = View.VISIBLE
-            binding.noSearchResultsFoundText.visibility = View.INVISIBLE
-        }
+    private fun showPredictionList(query: String){
+        getSearchPlaces(query)
     }
-
-    private fun toggleImageView(query: String) {
-        if (query.isNotEmpty()) {
-            binding.searchBoxContainer.clearSearchQuery.visibility = View.VISIBLE
-            //binding.searchBoxContainer.voiceSearchQuery.visibility = View.INVISIBLE
-        } else if (query.isEmpty()) {
-            binding.searchBoxContainer.clearSearchQuery.visibility = View.INVISIBLE
-            //binding.searchBoxContainer.voiceSearchQuery.visibility = View.VISIBLE
-        }
-    }
-    //here
 
     @SuppressLint("PotentialBehaviorOverride")
     @RequiresApi(api = Build.VERSION_CODES.M)
     override fun onMapReady(mMap: GoogleMap) {
+        Log.v("ddtv","onMapReady:  ")
         getLastLocation()
         viewModel.googleMap = mMap
 
@@ -410,6 +302,7 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
         )*/
 
         viewModel.googleMap!!.setOnMapClickListener {
+            binding.searchBoxContainer.searchEditText.clearFocus()
             viewModel.markerOptions= MarkerOptions()
             viewModel.markerOptions?.position(it)
             viewModel.markerOptions?.title(it.latitude.toString())
@@ -432,37 +325,30 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
         viewModel.googleMap!!.isMyLocationEnabled = true
         viewModel.googleMap!!.uiSettings.isMyLocationButtonEnabled = true
         viewModel.googleMap!!.mapType= GoogleMap.MAP_TYPE_NORMAL
-        Log.v("ddtv","onMapReady: 44 "+viewModel.latlng.toString()+" , ")
         if (viewModel.latlng!=null){
             viewModel.mLatitude = viewModel.latlng!!.latitude
             viewModel.mLongitude = viewModel.latlng!!.longitude
-
-            val n = LatLng(20.593684,78.96288)
-        var address= viewModel.getAddress(n,viewModel.geocoder)
+            val latlng = LatLng(20.593684,78.96288)
+        var address= viewModel.getAddress(latlng,viewModel.geocoder)
         binding.tvConfirmLocation.text = address
-            Log.v("ddtv","onMapReady: 55 "+address)
         }else{
             val n = LatLng(20.593684,78.96288)
             var address= viewModel.getAddress(n,viewModel.geocoder)
             binding.tvConfirmLocation.text = address
-            Log.v("ddtv","onMapReady: end999  case: ")
-           /* var address= viewModel.getAddress(viewModel.latlng!!,viewModel.geocoder)
-            binding.tvConfirmLocation.text = address*/
         }
     }
 
     @SuppressLint("MissingPermission")
     private fun getLastLocation() {
-        Log.v("ddtv","in getLastLocation: 111")
         if (checkPermissions()) {
             if (isLocationEnabled()) {
                 viewModel.mFusedLocationClient.lastLocation.addOnCompleteListener(requireActivity()) { task ->
                     var location: Location? = task.result
                     if (location == null) {
                         requestNewLocationData()
-                        Log.v("ddtv","getLastLocation: if case")
+                        Log.v("ddtv","onLocationChanged: if case ")
                     } else {
-                        Log.v("ddtv","on getLastLocation Success CompList: "+location.latitude.toString()+" , "+location.longitude.toString())
+                        Log.v("ddtv","onLocationChanged: else case ")
                         if (viewModel.mCurrLocationMarker!=null){
                             viewModel.mCurrLocationMarker!!.remove()
                         }
@@ -482,11 +368,11 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
                        // binding.tvConfirmLocation.text = address
                         Log.v("ddtv","getLastLocation: else case: "+address+" , "+latLong)
 
-                       /* viewModel.mMap.addMarker(
+                        viewModel.googleMap?.addMarker(
                             MarkerOptions()
                                 .position(LatLng(viewModel.mLatitude, viewModel.mLongitude))
                                 .title("Marker")
-                        )*/
+                        )
                     }
                 }
             } else {
@@ -517,7 +403,7 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
     private val mLocationCallback = object : LocationCallback() {
         override fun onLocationResult(locationResult: LocationResult) {
             var mLastLocation: Location = locationResult.lastLocation!!
-            Log.v("ddtv","onLocRes: "+mLastLocation.toString())
+            Log.v("ddtv","onLocRes: 555  "+mLastLocation.toString())
         }
     }
 
@@ -563,9 +449,28 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
     override fun getSelectedItem(position: Int, title: String) {
         binding.clBottomConfirmLocation.visibility= View.VISIBLE
         binding.searchBoxContainer.searchEditText.hint="Search Location"
-        binding.searchBoxContainer.searchEditText.setText(title)
+        //binding.searchBoxContainer.searchEditText.setText(title)
         viewModel.autoCompletePredication.clear()
         demoAdapter!!.notifyDataSetChanged()
         binding.tvConfirmLocation.text = title
+        hideKeyboard()
+        binding.searchBoxContainer.clearSearchQuery.visibility=View.GONE
+
+        val latlng=getLatLngFromAddress(title)
+        val mLatitude= latlng.latitude
+        val mLongitude= latlng.longitude
+
+        viewModel.googleMap?.addMarker(
+            MarkerOptions()
+                .position(latlng)
+                .title("Marker")
+        )
+
+    }
+
+    fun hideKeyboard() {
+        val imm = requireActivity().getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager?
+        imm?.toggleSoftInput(InputMethodManager.HIDE_IMPLICIT_ONLY, 0)
+        binding.searchBoxContainer.searchEditText.clearFocus()
     }
 }
