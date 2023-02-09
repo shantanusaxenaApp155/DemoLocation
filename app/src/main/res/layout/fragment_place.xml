@@ -42,19 +42,6 @@
                 map:zOrderOnTop="true"
                 map:uiMapToolbar="true"
                 map:ambientEnabled="true" />
-            <!--map:liteMode="true"
-            map:zOrderOnTop="true"
-            map:useViewLifecycle="true"
-            map:uiRotateGestures="true"
-                map:uiScrollGestures="true"
-                map:uiTiltGestures="true"
-                map:uiZoomGestures="true"
-                map:uiZoomControls="true"
-                map:uiMapToolbar="true"
-                map:ambientEnabled="true"
-                map:cameraMinZoomPreference="0.0"
-                map:cameraMaxZoomPreference="1.0"
-            map:uiCompass="true"-->
         </androidx.cardview.widget.CardView>
 
         <FrameLayout
@@ -89,7 +76,43 @@
         android:weightSum="3"
         tools:visibility="visible">
 
-        <androidx.appcompat.widget.SearchView
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+        <include
+            android:id="@+id/search_box_container"
+            layout="@layout/search_header_layout" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/search_list"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
+            android:elevation="12dp"
+            app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/search_box_container"
+            tools:itemCount="5"
+            android:background="@drawable/bg_rounder_searchview"
+            tools:listitem="@layout/row_search_suggestion" />
+
+        <TextView
+            android:id="@+id/no_search_results_found_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="No Search Results Found"
+            android:textAppearance="?attr/textAppearanceHeadline4"
+            android:visibility="invisible"
+            app:layout_constraintBottom_toBottomOf="@id/search_list"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="@id/search_list" />
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+        <!--<androidx.appcompat.widget.SearchView
             android:id="@+id/idSearchView"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -97,7 +120,7 @@
             android:background="@drawable/bg_rounder_searchview"
             android:elevation="25dp"
             app:iconifiedByDefault="false"
-            app:queryHint="Search Here" />
+            app:queryHint="Search Here" />-->
     </LinearLayout>
 
     <androidx.constraintlayout.widget.ConstraintLayout
@@ -123,10 +146,20 @@
         android:text="MyLocation"
         android:textSize="18sp"
         android:drawableLeft="@drawable/ic_location_new"
-        android:drawableRight="@drawable/ic_cancel"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintTop_toTopOf="parent"/>
+
+        <ImageView
+            android:id="@+id/btn_close"
+            android:layout_width="25dp"
+            android:layout_height="25dp"
+            android:src="@drawable/ic_cancel"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintRight_toRightOf="parent"
+            app:layout_constraintBaseline_toBaselineOf="@id/tv_confirm_location"
+            android:layout_marginTop="3dp"
+            android:layout_marginEnd="5dp"/>
 
         <com.google.android.material.button.MaterialButton
             android:id="@+id/btn_confirm_location"

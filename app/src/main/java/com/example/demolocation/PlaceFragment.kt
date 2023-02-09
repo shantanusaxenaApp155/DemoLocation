@@ -4,28 +4,39 @@ import android.Manifest
 import android.Manifest.permission.ACCESS_COARSE_LOCATION
 import android.Manifest.permission.ACCESS_FINE_LOCATION
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.*
 import android.location.LocationRequest
+import android.opengl.Visibility
 import android.os.Build
 import android.os.Bundle
 import android.os.Looper
 import android.provider.Settings
+import android.speech.RecognizerIntent
+import android.text.Editable
+import android.text.TextWatcher
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.AppCompatEditText
 import androidx.appcompat.widget.SearchView
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.ContextCompat.getSystemService
+import androidx.core.widget.addTextChangedListener
+import androidx.core.widget.doOnTextChanged
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
+import androidx.recyclerview.widget.RecyclerView
 import com.example.demolocation.adapter.SearchSuggestionAdapter
 import com.example.demolocation.databinding.FragmentPlaceBinding
 import com.example.demolocation.viewmodel.MainViewModel
@@ -42,10 +53,7 @@ import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.model.*
 import com.google.android.gms.tasks.Task
 import com.google.android.libraries.places.api.Places
-import com.google.android.libraries.places.api.model.AutocompleteSessionToken
-import com.google.android.libraries.places.api.model.Place
-import com.google.android.libraries.places.api.model.RectangularBounds
-import com.google.android.libraries.places.api.model.TypeFilter
+import com.google.android.libraries.places.api.model.*
 import com.google.android.libraries.places.api.net.FetchPlaceRequest
 import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest
 import com.google.android.libraries.places.api.net.FindAutocompletePredictionsResponse
@@ -56,6 +64,7 @@ import java.io.IOException
 import java.lang.StringBuilder
 import java.util.*
 import java.util.concurrent.TimeUnit
+import kotlin.collections.ArrayList
 
 
 class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDemoClick {
@@ -79,92 +88,56 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         viewModel = ViewModelProvider(requireActivity()).get(MainViewModel::class.java)
-        //initPlaceApi()
         setUpView()
         viewModel.geocoder = Geocoder(requireActivity(), Locale.getDefault())
 
         val apikey = getString(R.string.api_key)
         viewModel.apiKey = apikey
 
-        //Places.initialize(requireActivity().applicationContext, apikey)
         initPlaceApi()
         viewModel.mFusedLocationClient = LocationServices.getFusedLocationProviderClient(requireActivity())
-        Log.v("ddtv","onVC()")
-
         viewModel.googleMap?.setOnPoiClickListener {
-            Log.v("ddtv","in onPOI: "+it.toString())
             startCMS(LatLng(37.4219983,-122.084),it)
         }
         //getLastLocation()
-        //addCustomFrag()
-    }
-
-    private fun addCustomFrag(){
-      /*  val autocompleteSupportFragment1 = requireActivity().supportFragmentManager.findFragmentById(R.id.autocomplete_fragment1) as AutocompleteSupportFragment?
-        autocompleteSupportFragment1?.setPlaceFields(
-            listOf(
-                Place.Field.NAME,
-                Place.Field.ADDRESS,
-                Place.Field.PHONE_NUMBER,
-                Place.Field.LAT_LNG,
-                Place.Field.OPENING_HOURS,
-                Place.Field.RATING,
-                Place.Field.USER_RATINGS_TOTAL
-
-            )
-        )
-
-        autocompleteSupportFragment1?.setOnPlaceSelectedListener(object : PlaceSelectionListener {
-            override fun onPlaceSelected(place: Place) {
-                val name = place.name
-                val address = place.address
-                val phone = place.phoneNumber.toString()
-                val latlng = place.latLng
-                val latitude = latlng?.latitude
-                val longitude = latlng?.longitude
-
-                val isOpenStatus : String = if(place.isOpen == true){
-                    "Open"
-                } else {
-                    "Closed"
-                }
-
-                val rating = place.rating
-                val userRatings = place.userRatingsTotal
-
-                Log.v("ddtv","onPageSelected: "+name+" , "+address+" , "+latitude+" , "+longitude+" , ")
-            }
-
-            override fun onError(status: Status) {
-                Toast.makeText(requireActivity().applicationContext,"Some error occurred", Toast.LENGTH_SHORT).show()
-            }
-        })*/
     }
 
     private fun getSearchPlaces(query: String){
-        Log.v("ddtv","getSearchPlaces 111: "+bounds+" , "+viewModel.mLatitude+" , "+viewModel.mLongitude+" , "+token+" , "+query)
+        val token = AutocompleteSessionToken.newInstance()
+        val bounds = RectangularBounds.newInstance(
+            LatLng(22.458744, 88.208162), LatLng(22.730671, 88.524896))
         val request =
             FindAutocompletePredictionsRequest.builder()
                 .setLocationBias(bounds)
-                //.setLocationRestriction(bounds)
-                .setOrigin(LatLng(37.4219983, -122.084 ))
-                .setCountries("IN")
-                .setTypesFilter(listOf(TypeFilter.ADDRESS.toString(),TypeFilter.CITIES.toString(),TypeFilter.GEOCODE.toString()))
+                //.setOrigin(LatLng(-33.8749937, 151.2041382))
+                .setTypeFilter(TypeFilter.ADDRESS)
+                .setTypeFilter(TypeFilter.GEOCODE)
                 .setSessionToken(token)
+                .setCountries("IN")
                 .setQuery(query)
                 .build()
 
+        viewModel.autoCompletePredication.clear()
         placesClient.findAutocompletePredictions(request)
             .addOnSuccessListener { response: FindAutocompletePredictionsResponse ->
                 for (prediction in response.autocompletePredictions) {
-                    Log.v("ddtv","placeSearResult:1 "+prediction.placeId)
-                    Log.v("ddtv", "placeSearResult:2 "+prediction.getPrimaryText(null).toString())
+                    Log.i("ddtv", "autoResult: "+prediction.placeId+" , "+response.toString()+" ,,  "+prediction.placeTypes.toString())
+                    Log.i("ddtv", "autoResult 22: "+prediction.getPrimaryText(null).toString()+" , "+prediction.getFullText(null).toString())
+                    viewModel.autoCompletePredication.add(prediction)
+                }
+                if (demoAdapter != null) {
+                    demoAdapter!!.notifyDataSetChanged()
+                } else {
+                    demoAdapter =
+                        SearchSuggestionAdapter(viewModel.autoCompletePredication, this@PlaceFragment)
+                    binding.searchList.adapter = demoAdapter
                 }
             }.addOnFailureListener { exception: Exception? ->
                 if (exception is ApiException) {
-                    Log.v("ddtv", "Place not found: " + exception.statusCode+exception.message.toString())
+                    Log.e("ddtv", "Place not found: " + exception.statusCode+" , "+exception.message.toString())
                 }
             }
+
 
 
     }
@@ -215,11 +188,10 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
             var text = StringBuilder()
             for (prediction in it.autocompletePredictions ){
                 text.append(" ").append(prediction.getFullText(null))
-            Log.v("ddtv","PF initPlaceApi success: "+it.toString())
                 viewModel.autoCompletePredication.add(prediction)
             }
         }.addOnFailureListener {
-            Log.v("ddtv","PF initPlaceApi error: "+it.toString())
+
         }*/
 
         //heret
@@ -240,20 +212,16 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
         placesClient.fetchPlace(request)
             .addOnSuccessListener { response ->
                 val place = response.place
-                Log.v("ddtv",
-                    "Place success: : "+place )
+
             }.addOnFailureListener { exception ->
                 if (exception is ApiException) {
                     val statusCode = exception.statusCode
-                    Log.v("ddtv",
-                        "Place not found: " +
-                                exception.message + ", " +
-                                "statusCode: " + statusCode)
+
                 }
             }
 
         viewModel.googleMap?.setOnPoiClickListener {
-            Log.v("ddtv","in onPOI: "+it.toString())
+
         }*/
         //here
     }
@@ -271,7 +239,42 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
             //TODO move to next screen
         }
 
-        binding.idSearchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener{
+        binding.clBottomConfirmLocation.visibility= View.VISIBLE
+
+        binding.searchBoxContainer.searchEditText.doOnTextChanged { text, start, before, count ->
+            val query = text.toString().toLowerCase(Locale.getDefault())
+           // filterWithQuery(query)
+            //toggleImageView(query)
+        }
+
+        binding.searchBoxContainer.clearSearchQuery.setOnClickListener {
+            binding.searchBoxContainer.searchEditText.setText(" ")
+        }
+
+        binding.searchBoxContainer.searchEditText.addTextChangedListener {
+
+        }
+
+        binding.searchBoxContainer.searchEditText.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(p0: Editable?) {
+                Log.v("ddtv","inPF afterTextChanged: "+p0.toString())
+                shoePredictionList(p0.toString())
+            }
+
+            override fun beforeTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
+            }
+
+            override fun onTextChanged(p0: CharSequence?, p1: Int, p2: Int, p3: Int) {
+
+            }
+
+        })
+
+        binding.btnClose.setOnClickListener {
+            binding.clBottomConfirmLocation.visibility= View.GONE
+        }
+
+        /*binding.idSearchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener{
             override fun onQueryTextChange(newText: String?): Boolean {
                 return false
             }
@@ -285,7 +288,7 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
                 getSearchPlaces(location)
                 //here
 
-                /*if (location != null || location == "") {
+                *//*if (location != null || location == "") {
                     val geocoder = Geocoder(requireActivity())
                     try {
                         addressList = geocoder.getFromLocationName(location, 3)
@@ -314,26 +317,97 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
                             SearchSuggestionAdapter(viewModel.autoCompletePredication, this@PlaceFragment)
                         //binding.rvDemo.adapter = demoAdapter
                     }
-                }*/
+                }*//*
 
                 return true
             }
-        })
+        })*/
     }
+
+    private fun shoePredictionList(query: String){
+        getSearchPlaces(query)
+    }
+
+
+    //here
+    private fun attachAdapter(list: ArrayList<AutocompletePrediction?>) {
+        demoAdapter =
+            SearchSuggestionAdapter(viewModel.autoCompletePredication, this@PlaceFragment)
+        binding.searchList.adapter = demoAdapter
+
+       /* val searchAdapter = SearchAdapter(list)
+        recyclerView.adapter = searchAdapter*/
+        /*if (demoAdapter != null) {
+            demoAdapter!!.notifyDataSetChanged()
+        } else {
+            demoAdapter =
+                SearchSuggestionAdapter(viewModel.autoCompletePredication, this@PlaceFragment)
+            //binding.rvDemo.adapter = demoAdapter
+        }*/
+    }
+
+    private fun filterWithQuery(query: String) {
+        if (query.isNotEmpty()) {
+            attachAdapter(viewModel.autoCompletePredication)
+            toggleRecyclerView(viewModel.autoCompletePredication)
+        } else if (query.isEmpty()) {
+            attachAdapter(viewModel.autoCompletePredication)
+        }
+    }
+
+   /* private fun onQueryChanged(filterQuery: String): List<AutocompletePrediction> {
+       *//* val filteredList = ArrayList<AutocompletePrediction>()
+        for (currentSport in sportsList) {
+            if (currentSport.title.toLowerCase(Locale.getDefault()).contains(filterQuery)) {
+                filteredList.add(currentSport)
+            }
+        }
+        return filteredList*//*
+    }*/
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == 101 && resultCode == Activity.RESULT_OK) {
+            val spokenText: String? =
+                data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS).let { results ->
+                    results?.get(0)
+                }
+            binding.searchBoxContainer.searchEditText.setText(spokenText)
+        }
+        super.onActivityResult(requestCode, resultCode, data)
+    }
+
+    private fun toggleRecyclerView(sportsList: List<AutocompletePrediction?>) {
+        if (sportsList.isEmpty()) {
+            binding.searchList.visibility = View.INVISIBLE
+            binding.noSearchResultsFoundText.visibility = View.VISIBLE
+        } else {
+            binding.searchList.visibility = View.VISIBLE
+            binding.noSearchResultsFoundText.visibility = View.INVISIBLE
+        }
+    }
+
+    private fun toggleImageView(query: String) {
+        if (query.isNotEmpty()) {
+            binding.searchBoxContainer.clearSearchQuery.visibility = View.VISIBLE
+            //binding.searchBoxContainer.voiceSearchQuery.visibility = View.INVISIBLE
+        } else if (query.isEmpty()) {
+            binding.searchBoxContainer.clearSearchQuery.visibility = View.INVISIBLE
+            //binding.searchBoxContainer.voiceSearchQuery.visibility = View.VISIBLE
+        }
+    }
+    //here
 
     @SuppressLint("PotentialBehaviorOverride")
     @RequiresApi(api = Build.VERSION_CODES.M)
     override fun onMapReady(mMap: GoogleMap) {
         getLastLocation()
         viewModel.googleMap = mMap
-        Log.v("ddtv","in onMapReady: 111")
 
        /* mMap.addMarker(
             MarkerOptions()
                 .position(LatLng(viewModel.mLatitude, viewModel.mLongitude))
                 .title("Marker")
         )*/
-        Log.v("ddtv","onMapReady:: 222 "+viewModel.mLatitude.toString()+" , "+viewModel.mLongitude.toString())
 
         viewModel.googleMap!!.setOnMapClickListener {
             viewModel.markerOptions= MarkerOptions()
@@ -344,7 +418,6 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
             viewModel.googleMap!!.addMarker(viewModel.markerOptions!!)
             viewModel.query = it.latitude.toString()+" , "+it.longitude.toString()
             viewModel.latlng=it
-            Log.v("ddtv","onMapReady:: 333 "+it.toString())
         }
         if (ActivityCompat.checkSelfPermission(
                 requireActivity(),
@@ -354,7 +427,6 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
                 ACCESS_COARSE_LOCATION
             ) != PackageManager.PERMISSION_GRANTED
         ) {
-            Log.v("ddtv","return")
             return
         }
         viewModel.googleMap!!.isMyLocationEnabled = true
@@ -483,13 +555,17 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String>, grantResults: IntArray) {
         if (requestCode == viewModel.PERMISSION_ID) {
             if ((grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
-                Log.v("ddtv","onRequestPermissionsResult e")
                 getLastLocation()
             }
         }
     }
 
     override fun getSelectedItem(position: Int, title: String) {
-        TODO("Not yet implemented")
+        binding.clBottomConfirmLocation.visibility= View.VISIBLE
+        binding.searchBoxContainer.searchEditText.hint="Search Location"
+        binding.searchBoxContainer.searchEditText.setText(title)
+        viewModel.autoCompletePredication.clear()
+        demoAdapter!!.notifyDataSetChanged()
+        binding.tvConfirmLocation.text = title
     }
 }

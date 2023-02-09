@@ -1,6 +1,8 @@
 package com.example.demolocation.adapter
 
+import android.graphics.Color
 import android.graphics.Typeface
+import android.text.style.CharacterStyle
 import android.util.Log
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -10,6 +12,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.example.demolocation.databinding.RowSearchSuggestionBinding
 import com.example.demolocation.diffutil.DemoDiffUtill
 import com.google.android.libraries.places.api.model.AutocompletePrediction
+import java.time.format.TextStyle
 
 class SearchSuggestionAdapter internal constructor(
     private var allsearchSuggestionList: ArrayList<AutocompletePrediction?>,
@@ -47,11 +50,12 @@ class SearchSuggestionAdapter internal constructor(
 class DemoViewHolder(private val binding: RowSearchSuggestionBinding,private val onDemoClick: SearchSuggestionAdapter.OnDemoClick) : RecyclerView.ViewHolder(binding.root) {
 
     fun bind(dataItem: AutocompletePrediction,position: Int) {
-        binding.tvRowAddress.text=dataItem.getFullText(null)
+        binding.tvRowAddress.text=dataItem.getPrimaryText(null)
+        binding.tvRowAddressSubtext.text=dataItem.getSecondaryText(null)
 
         binding.root.setOnClickListener {
-            onDemoClick.getSelectedItem(position,
-                dataItem.getFullText(null).toString())
+            onDemoClick.getSelectedItem(position,dataItem.getFullText(null).toString())
+                //dataItem.getFullText(null).toString())
         }
     }
 }
