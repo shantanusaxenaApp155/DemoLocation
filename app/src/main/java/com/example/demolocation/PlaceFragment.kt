@@ -343,7 +343,6 @@ class PlaceFragment: Fragment(), OnMapReadyCallback,SearchSuggestionAdapter.OnDe
         if (checkPermissions()) {
             if (isLocationEnabled()) {
                 viewModel.mFusedLocationClient.lastLocation.addOnCompleteListener(requireActivity()) { task ->
-                    Log.v("ddtv","onLocationChanged: "+task.result.toString())
                     var location: Location? = task.result
                     if (location == null) {
                         requestNewLocationData()
