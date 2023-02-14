@@ -17,6 +17,7 @@ import java.time.format.TextStyle
 class SearchSuggestionAdapter internal constructor(
     private var allsearchSuggestionList: ArrayList<AutocompletePrediction?>,
     val onDemoListener: OnDemoClick) : RecyclerView.Adapter<DemoViewHolder>() {
+    val limit=5
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): DemoViewHolder {
         val binding = RowSearchSuggestionBinding.inflate(LayoutInflater.from(parent.context),parent,false)
@@ -24,7 +25,11 @@ class SearchSuggestionAdapter internal constructor(
     }
 
     override fun getItemCount(): Int {
-        return allsearchSuggestionList.size
+        if (allsearchSuggestionList.size>limit){
+            return limit
+        }else{
+            return allsearchSuggestionList.size
+        }
     }
 
     override fun onBindViewHolder(holder: DemoViewHolder, position: Int) {
